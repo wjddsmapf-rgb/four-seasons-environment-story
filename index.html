@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>우리의 봄여름가을겨울 - 플립 그림책</title>
+<style>
+  :root {
+    --paper:#fff8e9; --ink:#4b321f; --muted:#8a6a45; --accent:#d98952;
+    --shadow: 0 28px 70px rgba(74,48,26,.22);
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; min-height:100vh; color:var(--ink);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background:
+      radial-gradient(circle at 18% 18%, rgba(255,191,196,.35), transparent 28%),
+      radial-gradient(circle at 82% 20%, rgba(255,221,125,.32), transparent 30%),
+      radial-gradient(circle at 18% 88%, rgba(189,223,255,.38), transparent 32%),
+      radial-gradient(circle at 86% 80%, rgba(219,149,83,.26), transparent 30%),
+      linear-gradient(135deg,#fff7e8,#f3efe4 55%,#eef5ef);
+    overflow:hidden;
+  }
+  .app { width:100vw; height:100vh; display:grid; grid-template-rows:auto 1fr auto; gap:10px; padding:18px clamp(16px,3vw,42px); }
+  header { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+  .title { font-weight:900; letter-spacing:-.03em; font-size:clamp(20px,2.4vw,36px); text-shadow:0 2px 0 rgba(255,255,255,.7); }
+  .hint { color:var(--muted); font-size:14px; }
+  .stage { display:grid; place-items:center; perspective:2200px; min-height:0; }
+  .book-wrap { width:min(92vw,1260px); aspect-ratio:3/2; position:relative; }
+  .book { width:100%; height:100%; position:relative; transform-style:preserve-3d; }
+  .page {
+    position:absolute; inset:0; border-radius:24px; overflow:hidden; background:#fff;
+    box-shadow:var(--shadow); transform-origin:left center; transform-style:preserve-3d;
+    opacity:0; pointer-events:none; transition:opacity .28s ease, transform .72s cubic-bezier(.2,.72,.16,1);
+  }
+  .page img { width:100%; height:100%; object-fit:cover; display:block; user-select:none; -webkit-user-drag:none; }
+  .page.current { opacity:1; pointer-events:auto; transform:rotateY(0deg); z-index:4; }
+  .page.prev { opacity:0; transform:rotateY(-105deg); z-index:2; }
+  .page.next { opacity:0; transform:rotateY(18deg) translateX(1.5%); z-index:1; }
+  .turning-next .page.current { animation:flipNext .72s cubic-bezier(.2,.72,.16,1) both; }
+  .turning-prev .page.current { animation:flipPrev .72s cubic-bezier(.2,.72,.16,1) both; }
+  @keyframes flipNext { 0% { transform:rotateY(0); opacity:1; } 55% { opacity:1; } 100% { transform:rotateY(-105deg); opacity:0; } }
+  @keyframes flipPrev { 0% { transform:rotateY(0); opacity:1; } 45% { opacity:1; } 100% { transform:rotateY(105deg); opacity:0; } }
+  .book-wrap::before { content:""; position:absolute; inset:2% 0 2% 2%; width:7%; z-index:8; pointer-events:none; background:linear-gradient(90deg, rgba(72,45,24,.18), rgba(255,255,255,0)); mix-blend-mode:multiply; border-radius:24px 0 0 24px; }
+  .book-wrap::after { content:""; position:absolute; left:0; right:0; bottom:-22px; height:34px; border-radius:50%; background:radial-gradient(ellipse at center, rgba(74,48,26,.22), transparent 70%); filter:blur(7px); z-index:-1; }
+  .nav { display:flex; align-items:center; justify-content:center; gap:14px; padding-bottom:8px; }
+  button { border:0; border-radius:999px; padding:12px 18px; min-width:98px; background:rgba(255,255,255,.76); color:var(--ink); box-shadow:0 8px 24px rgba(74,48,26,.12); font-weight:800; cursor:pointer; backdrop-filter:blur(8px); }
+  button:hover { transform:translateY(-1px); background:#fff; }
+  button:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+  .counter { min-width:150px; text-align:center; font-weight:800; color:var(--muted); }
+  .dots { display:flex; gap:5px; justify-content:center; max-width:min(74vw,760px); flex-wrap:wrap; }
+  .dot { width:8px; height:8px; border-radius:999px; background:rgba(138,106,69,.28); }
+  .dot.active { background:var(--accent); width:22px; }
+  .tap { position:absolute; inset:0; display:grid; grid-template-columns:1fr 1fr; z-index:10; }
+  .tap > div { cursor:pointer; }
+  @media (max-width: 760px) {
+    .app { padding:12px; grid-template-rows:auto 1fr auto; } .hint { display:none; }
+    .book-wrap { width:96vw; } button { min-width:76px; padding:11px 13px; } .counter { min-width:96px; font-size:13px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .page, .turning-next .page.current, .turning-prev .page.current { animation:none!important; transition:none!important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div><div class="title">우리의 봄여름가을겨울</div><div class="hint">← → 키보드 또는 화면 좌우를 눌러 넘겨요</div></div>
+    <div class="hint">지구오필리아 그림책 미리보기</div>
+  </header>
+  <main class="stage">
+    <div class="book-wrap">
+      <div id="book" class="book" aria-live="polite"></div>
+      <div class="tap" aria-hidden="true"><div id="tapPrev"></div><div id="tapNext"></div></div>
+    </div>
+  </main>
+  <footer class="nav">
+    <button id="prevBtn">이전</button>
+    <div class="counter" id="counter"></div>
+    <button id="nextBtn">다음</button>
+  </footer>
+  <div class="dots" id="dots" aria-hidden="true"></div>
+</div>
+<script>
+const pages = [{"src": "images/cover_front.png", "label": "앞표지"}, {"src": "images/page01.png", "label": "1페이지"}, {"src": "images/page02.png", "label": "2페이지"}, {"src": "images/page03.png", "label": "3페이지"}, {"src": "images/page04.png", "label": "4페이지"}, {"src": "images/page05.png", "label": "5페이지"}, {"src": "images/page06.png", "label": "6페이지"}, {"src": "images/page07.png", "label": "7페이지"}, {"src": "images/page08.png", "label": "8페이지"}, {"src": "images/page09.png", "label": "9페이지"}, {"src": "images/page10.png", "label": "10페이지"}, {"src": "images/page11.png", "label": "11페이지"}, {"src": "images/page12.png", "label": "12페이지"}, {"src": "images/page13.png", "label": "13페이지"}, {"src": "images/page14.png", "label": "14페이지"}, {"src": "images/page15.png", "label": "15페이지"}, {"src": "images/page16.png", "label": "16페이지"}, {"src": "images/page17.png", "label": "17페이지"}, {"src": "images/page18.png", "label": "18페이지"}, {"src": "images/page19.png", "label": "19페이지"}, {"src": "images/page20.png", "label": "20페이지"}, {"src": "images/cover_back.png", "label": "뒷표지"}];
+let index = Number(localStorage.getItem('dotoriFlipIndex') || 0);
+index = Math.max(0, Math.min(index, pages.length - 1));
+let busy = false;
+const book = document.getElementById('book');
+const counter = document.getElementById('counter');
+const dots = document.getElementById('dots');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+function renderPages() {
+  book.innerHTML = pages.map((p,i)=>`<section class="page" data-i="${i}" aria-label="${p.label}"><img src="${p.src}" alt="${p.label}"></section>`).join('');
+  dots.innerHTML = pages.map((_,i)=>`<span class="dot" data-i="${i}"></span>`).join('');
+}
+function update() {
+  document.querySelectorAll('.page').forEach((el,i)=>{
+    el.className='page' + (i===index?' current': i<index?' prev':' next');
+  });
+  document.querySelectorAll('.dot').forEach((el,i)=>el.classList.toggle('active', i===index));
+  const p=pages[index];
+  counter.textContent = `${p.label} / ${pages.length===22?'표지 포함 22장':pages.length+'장'}`;
+  prevBtn.disabled = index===0; nextBtn.disabled = index===pages.length-1;
+  localStorage.setItem('dotoriFlipIndex', index);
+}
+function turn(dir) {
+  if (busy) return;
+  const next = index + dir;
+  if (next < 0 || next >= pages.length) return;
+  busy = true;
+  book.classList.remove('turning-next','turning-prev');
+  book.classList.add(dir>0?'turning-next':'turning-prev');
+  setTimeout(()=>{ index = next; book.classList.remove('turning-next','turning-prev'); update(); busy=false; }, 430);
+}
+renderPages(); update();
+prevBtn.onclick=()=>turn(-1); nextBtn.onclick=()=>turn(1);
+document.getElementById('tapPrev').onclick=()=>turn(-1);
+document.getElementById('tapNext').onclick=()=>turn(1);
+document.addEventListener('keydown', e=>{ if(e.key==='ArrowRight'||e.key===' ') turn(1); if(e.key==='ArrowLeft') turn(-1); if(e.key==='Home'){index=0; update();} if(e.key==='End'){index=pages.length-1; update();} });
+dots.addEventListener('click', e=>{ const dot=e.target.closest('.dot'); if(!dot) return; index=Number(dot.dataset.i); update(); });
+</script>
+</body>
+</html>
